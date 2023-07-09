@@ -50,7 +50,7 @@ type Options struct {
 
 // Greedy is a greedy but fast line-breaking algorithm that tries to fit as much
 // boxes as possible in each and every line.
-func Greedy(para []Box, opt Options) (lines []*Line) {
+func Greedy(para []Box, opt *Options) (lines []*Line) {
 	var (
 		minGlueWidth = opt.GlueWidth - opt.GlueShrink
 		maxGlueWidth = opt.GlueWidth + opt.GlueExpand
@@ -89,6 +89,102 @@ func Greedy(para []Box, opt Options) (lines []*Line) {
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+// KnuthPlass is a relatively slow line-breaking algorithm but gives the best
+// result aesthetically.
+func KnuthPlass(para []Box, opt *Options) (lines []*Line) {
+	ends, _ := knuthPlass(para, opt, 0)
+	i := 0
+	for _, end := range ends {
+		var (
+			line       = &Line{GlueWidth: opt.GlueWidth}
+			boxesWidth = float32(0)
+		)
+		for i < end {
+			line.Boxes = append(line.Boxes, para[i])
+			boxesWidth += para[i].Width()
+			i++
+		}
+		if numGlues := len(line.Boxes) - 1; end < len(para) && numGlues > 0 {
+			line.GlueWidth = (opt.TextWidth - boxesWidth) / float32(numGlues)
+		}
+		bidi(line, opt.TextDirection)
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+func knuthPlass(para []Box, opt *Options, start int) (ends []int, badness float32) {
+	var end int
+	badness = float32(10_000)
+	for _, bp := range breakRange(para, opt, start) {
+		nextBadness := float32(0)
+		if bp.Index < len(para) {
+			ends, nextBadness = knuthPlass(para, opt, bp.Index)
+		}
+		if b := bp.Badness + nextBadness; b < badness {
+			badness = bp.Badness + nextBadness
+			end = bp.Index
+		}
+	}
+	return append([]int{end}, ends...), badness
+}
+
+type breakPoint struct {
+	Index   int
+	Badness float32
+}
+
+func breakRange(para []Box, opt *Options, start int) (bps []breakPoint) {
+	var (
+		first, last  int
+		minGlueWidth = opt.GlueWidth - opt.GlueShrink
+		maxGlueWidth = opt.GlueWidth + opt.GlueExpand
+		minLineWidth = float32(0)
+		maxLineWidth = float32(0)
+		boxesWidth   = float32(0)
+		numGlues     = 0
+	)
+	for first = start; first < len(para); first++ {
+		boxWidth := para[first].Width()
+		if first == start {
+			minLineWidth += boxWidth
+			maxLineWidth += boxWidth
+			boxesWidth += boxWidth
+		} else if maxLineWidth+maxGlueWidth+boxWidth <= opt.TextWidth {
+			minLineWidth += minGlueWidth + boxWidth
+			maxLineWidth += maxGlueWidth + boxWidth
+			boxesWidth += boxWidth
+			numGlues++
+		} else {
+			badness := float32(0)
+			if numGlues > 0 {
+				diff := opt.GlueWidth - (opt.TextWidth-boxesWidth)/float32(numGlues)
+				badness = diff * diff
+			}
+			bps = append(bps, breakPoint{Index: first, Badness: badness})
+			break
+		}
+	}
+	if len(bps) == 0 {
+		bps = append(bps, breakPoint{Index: first})
+		return
+	}
+	for last = first; last < len(para); last++ {
+		boxWidth := para[last].Width()
+		if minLineWidth+minGlueWidth+boxWidth > opt.TextWidth {
+			break
+		}
+		minLineWidth += minGlueWidth + boxWidth
+		badness := float32(0)
+		if numGlues > 0 && last != len(para)-1 {
+			diff := opt.GlueWidth - (opt.TextWidth-boxesWidth)/float32(numGlues)
+			badness = diff * diff
+		}
+		bps = append(bps, breakPoint{Index: last + 1, Badness: badness})
+	}
+	return bps
 }
 
 func bidi(line *Line, textDirection Direction) {
