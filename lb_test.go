@@ -3,6 +3,7 @@ package lb_test
 import (
 	"fmt"
 	"strings"
+	"testing"
 	"unicode"
 	"unicode/utf8"
 
@@ -31,6 +32,18 @@ func (w Word) Width() float32 {
 	return float32(utf8.RuneCountInString(string(w)))
 }
 
+func BenchmarkGreedy(b *testing.B) {
+	para := splitWords(alice)
+	for i := 0; i < b.N; i++ {
+		lb.Greedy(para, &lb.Options{
+			TextWidth:     40,
+			TextDirection: lb.LeftToRight,
+			GlueWidth:     1,
+			GlueExpand:    1,
+		})
+	}
+}
+
 func ExampleGreedy() {
 	para := splitWords(alice)
 	lines := lb.Greedy(para, &lb.Options{
@@ -50,6 +63,18 @@ func ExampleGreedy() {
 	// conversations in it, 'and what is the
 	// use of a book,' thought Alice 'without
 	// pictures or conversation?'
+}
+
+func BenchmarkKnuthPlass(b *testing.B) {
+	para := splitWords(alice)
+	for i := 0; i < b.N; i++ {
+		lb.KnuthPlass(para, &lb.Options{
+			TextWidth:     40,
+			TextDirection: lb.LeftToRight,
+			GlueWidth:     1,
+			GlueExpand:    1,
+		})
+	}
 }
 
 func ExampleKnuthPlass() {

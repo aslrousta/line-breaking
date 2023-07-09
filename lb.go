@@ -94,7 +94,11 @@ func Greedy(para []Box, opt *Options) (lines []*Line) {
 // KnuthPlass is a relatively slow line-breaking algorithm but gives the best
 // result aesthetically.
 func KnuthPlass(para []Box, opt *Options) (lines []*Line) {
-	ends, _ := knuthPlass(para, opt, 0)
+	cache := &kpCache{
+		Ends:      make(map[int][]int),
+		Badnesses: make(map[int]float32),
+	}
+	ends, _ := knuthPlass(para, opt, cache, 0)
 	i := 0
 	for _, end := range ends {
 		var (
@@ -115,20 +119,31 @@ func KnuthPlass(para []Box, opt *Options) (lines []*Line) {
 	return lines
 }
 
-func knuthPlass(para []Box, opt *Options, start int) (ends []int, badness float32) {
+type kpCache struct {
+	Ends      map[int][]int
+	Badnesses map[int]float32
+}
+
+func knuthPlass(para []Box, opt *Options, cache *kpCache, start int) (ends []int, badness float32) {
+	if _, ok := cache.Ends[start]; ok {
+		return cache.Ends[start], cache.Badnesses[start]
+	}
 	var end int
 	badness = float32(10_000)
 	for _, bp := range breakRange(para, opt, start) {
 		nextBadness := float32(0)
 		if bp.Index < len(para) {
-			ends, nextBadness = knuthPlass(para, opt, bp.Index)
+			ends, nextBadness = knuthPlass(para, opt, cache, bp.Index)
 		}
 		if b := bp.Badness + nextBadness; b < badness {
 			badness = bp.Badness + nextBadness
 			end = bp.Index
 		}
 	}
-	return append([]int{end}, ends...), badness
+	ends = append([]int{end}, ends...)
+	cache.Ends[start] = ends
+	cache.Badnesses[start] = badness
+	return ends, badness
 }
 
 type breakPoint struct {
