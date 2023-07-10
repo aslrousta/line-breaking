@@ -125,8 +125,8 @@ type kpCache struct {
 }
 
 func knuthPlass(para []Box, opt *Options, cache *kpCache, start int) (ends []int, badness float32) {
-	if _, ok := cache.Ends[start]; ok {
-		return cache.Ends[start], cache.Badnesses[start]
+	if ends, ok := cache.Ends[start]; ok {
+		return ends, cache.Badnesses[start]
 	}
 	var end int
 	badness = float32(10_000)

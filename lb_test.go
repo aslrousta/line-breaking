@@ -36,7 +36,7 @@ func BenchmarkGreedy(b *testing.B) {
 	para := splitWords(alice)
 	for i := 0; i < b.N; i++ {
 		lb.Greedy(para, &lb.Options{
-			TextWidth:     40,
+			TextWidth:     60,
 			TextDirection: lb.LeftToRight,
 			GlueWidth:     1,
 			GlueExpand:    1,
@@ -47,7 +47,7 @@ func BenchmarkGreedy(b *testing.B) {
 func ExampleGreedy() {
 	para := splitWords(alice)
 	lines := lb.Greedy(para, &lb.Options{
-		TextWidth:     40,
+		TextWidth:     60,
 		TextDirection: lb.LeftToRight,
 		GlueWidth:     1,
 		GlueExpand:    1,
@@ -55,21 +55,19 @@ func ExampleGreedy() {
 	printLines(lines)
 
 	// Output:
-	// Alice was beginning to get very tired of
-	// sitting by her sister on the bank, and
-	// of having nothing to do: once or twice
-	// she had peeped into the book her sister
-	// was reading, but it had no pictures or
-	// conversations in it, 'and what is the
-	// use of a book,' thought Alice 'without
-	// pictures or conversation?'
+	// Alice was beginning to get very tired of sitting by her
+	// sister on the bank, and of having nothing to do: once or
+	// twice she had peeped into the book her sister was reading,
+	// but it had no pictures or conversations in it, 'and what is
+	// the use of a book,' thought Alice 'without pictures or
+	// conversation?'
 }
 
 func BenchmarkKnuthPlass(b *testing.B) {
 	para := splitWords(alice)
 	for i := 0; i < b.N; i++ {
 		lb.KnuthPlass(para, &lb.Options{
-			TextWidth:     40,
+			TextWidth:     60,
 			TextDirection: lb.LeftToRight,
 			GlueWidth:     1,
 			GlueExpand:    1,
@@ -80,7 +78,7 @@ func BenchmarkKnuthPlass(b *testing.B) {
 func ExampleKnuthPlass() {
 	para := splitWords(alice)
 	lines := lb.KnuthPlass(para, &lb.Options{
-		TextWidth:     40,
+		TextWidth:     60,
 		TextDirection: lb.LeftToRight,
 		GlueWidth:     1,
 		GlueExpand:    1,
@@ -88,14 +86,12 @@ func ExampleKnuthPlass() {
 	printLines(lines)
 
 	// Output:
-	// Alice was beginning to get very tired of
-	// sitting  by  her  sister  on  the  bank,
-	// and of having nothing to do: once or
-	// twice she had peeped into the book her
-	// sister was reading, but it had no pictures
-	// or conversations in it, 'and what is
-	// the  use  of  a  book,'  thought  Alice
-	// 'without pictures or conversation?'
+	// Alice  was  beginning  to  get  very  tired  of  sitting  by
+	// her sister on the bank, and of having nothing to do: once or
+	// twice she had peeped into the book her sister was reading,
+	// but  it  had  no  pictures  or  conversations  in  it,  'and
+	// what is the use of a book,' thought Alice 'without pictures
+	// or conversation?'
 }
 
 func splitWords(text string) []lb.Box {
