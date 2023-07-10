@@ -53,7 +53,6 @@ type Options struct {
 func Greedy(para []Box, opt *Options) (lines []*Line) {
 	var (
 		minGlueWidth = opt.GlueWidth - opt.GlueShrink
-		maxGlueWidth = opt.GlueWidth + opt.GlueExpand
 		line         = &Line{GlueWidth: opt.GlueWidth}
 		lineWidth    = float32(0)
 		boxesWidth   = float32(0)
@@ -73,9 +72,6 @@ func Greedy(para []Box, opt *Options) (lines []*Line) {
 		} else {
 			if numGlues > 0 && boxesWidth < opt.TextWidth {
 				line.GlueWidth = (opt.TextWidth - boxesWidth) / float32(numGlues)
-				if line.GlueWidth > maxGlueWidth {
-					line.GlueWidth = maxGlueWidth
-				}
 			}
 			bidi(line, opt.TextDirection)
 			lines = append(lines, line)
@@ -128,19 +124,20 @@ func knuthPlass(para []Box, opt *Options, cache *kpCache, start int) (ends []int
 	if ends, ok := cache.Ends[start]; ok {
 		return ends, cache.Badnesses[start]
 	}
-	var end int
 	badness = float32(10_000)
 	for _, bp := range breakRange(para, opt, start) {
-		nextBadness := float32(0)
+		var (
+			nextBadness float32
+			nextEnds    []int
+		)
 		if bp.Index < len(para) {
-			ends, nextBadness = knuthPlass(para, opt, cache, bp.Index)
+			nextEnds, nextBadness = knuthPlass(para, opt, cache, bp.Index)
 		}
 		if b := bp.Badness + nextBadness; b < badness {
 			badness = bp.Badness + nextBadness
-			end = bp.Index
+			ends = append([]int{bp.Index}, nextEnds...)
 		}
 	}
-	ends = append([]int{end}, ends...)
 	cache.Ends[start] = ends
 	cache.Badnesses[start] = badness
 	return ends, badness
@@ -153,20 +150,21 @@ type breakPoint struct {
 
 func breakRange(para []Box, opt *Options, start int) (bps []breakPoint) {
 	var (
-		first, last  int
 		minGlueWidth = opt.GlueWidth - opt.GlueShrink
 		maxGlueWidth = opt.GlueWidth + opt.GlueExpand
-		minLineWidth = float32(0)
-		maxLineWidth = float32(0)
-		boxesWidth   = float32(0)
 		numGlues     = 0
+
+		first, last  int
+		minLineWidth float32
+		maxLineWidth float32
+		boxesWidth   float32
 	)
 	for first = start; first < len(para); first++ {
 		boxWidth := para[first].Width()
 		if first == start {
-			minLineWidth += boxWidth
-			maxLineWidth += boxWidth
-			boxesWidth += boxWidth
+			minLineWidth = boxWidth
+			maxLineWidth = boxWidth
+			boxesWidth = boxWidth
 		} else if maxLineWidth+maxGlueWidth+boxWidth <= opt.TextWidth {
 			minLineWidth += minGlueWidth + boxWidth
 			maxLineWidth += maxGlueWidth + boxWidth
@@ -175,7 +173,8 @@ func breakRange(para []Box, opt *Options, start int) (bps []breakPoint) {
 		} else {
 			badness := float32(0)
 			if numGlues > 0 {
-				diff := opt.GlueWidth - (opt.TextWidth-boxesWidth)/float32(numGlues)
+				glueWidth := (opt.TextWidth - boxesWidth) / float32(numGlues)
+				diff := opt.GlueWidth - glueWidth
 				badness = diff * diff
 			}
 			bps = append(bps, breakPoint{Index: first, Badness: badness})
@@ -192,9 +191,12 @@ func breakRange(para []Box, opt *Options, start int) (bps []breakPoint) {
 			break
 		}
 		minLineWidth += minGlueWidth + boxWidth
+		boxesWidth += boxWidth
+		numGlues++
 		badness := float32(0)
 		if numGlues > 0 && last != len(para)-1 {
-			diff := opt.GlueWidth - (opt.TextWidth-boxesWidth)/float32(numGlues)
+			glueWidth := (opt.TextWidth - boxesWidth) / float32(numGlues)
+			diff := opt.GlueWidth - glueWidth
 			badness = diff * diff
 		}
 		bps = append(bps, breakPoint{Index: last + 1, Badness: badness})
